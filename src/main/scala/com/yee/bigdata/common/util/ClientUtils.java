@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
@@ -21,6 +22,8 @@ public class ClientUtils {
     // This matches URIs of formats: host:port and protocol:\\host:port
     // IPv6 is supported with [ip] pattern
     private static final Pattern HOST_PORT_PATTERN = Pattern.compile(".*?\\[?([0-9a-zA-Z\\-%.:]*)\\]?:([0-9]+)");
+
+    private static final char[] hexchars = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
     /**
      * Extracts the hostname from a "host:port" address string.
@@ -516,6 +519,568 @@ public class ClientUtils {
                     resourceName + "'");
         }
         return is;
+    }
+
+    /**
+     * equals function that actually compares two buffers.
+     *
+     * @param onearray First buffer
+     * @param twoarray Second buffer
+     * @return true if one and two contain exactly the same content, else false.
+     */
+    public static boolean bufEquals(byte onearray[], byte twoarray[] ) {
+        if (onearray == twoarray) return true;
+        boolean ret = (onearray.length == twoarray.length);
+        if (!ret) {
+            return ret;
+        }
+        for (int idx = 0; idx < onearray.length; idx++) {
+            if (onearray[idx] != twoarray[idx]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     *
+     * @param s
+     * @return
+     */
+    public static String toXMLString(String s) {
+        if (s == null)
+            return "";
+
+        StringBuilder sb = new StringBuilder();
+        for (int idx = 0; idx < s.length(); idx++) {
+            char ch = s.charAt(idx);
+            if (ch == '<') {
+                sb.append("&lt;");
+            } else if (ch == '&') {
+                sb.append("&amp;");
+            } else if (ch == '%') {
+                sb.append("%25");
+            } else if (ch < 0x20) {
+                sb.append("%");
+                sb.append(hexchars[ch/16]);
+                sb.append(hexchars[ch%16]);
+            } else {
+                sb.append(ch);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     *
+     * @param s
+     * @return
+     */
+    public static String fromXMLString(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (int idx = 0; idx < s.length();) {
+            char ch = s.charAt(idx++);
+            if (ch == '%') {
+                char ch1 = s.charAt(idx++);
+                char ch2 = s.charAt(idx++);
+                char res = (char)(h2c(ch1)*16 + h2c(ch2));
+                sb.append(res);
+            } else {
+                sb.append(ch);
+            }
+        }
+
+        return sb.toString();
+    }
+
+    static private int h2c(char ch) {
+        if (ch >= '0' && ch <= '9') {
+            return ch - '0';
+        } else if (ch >= 'A' && ch <= 'F') {
+            return ch - 'A';
+        } else if (ch >= 'a' && ch <= 'f') {
+            return ch - 'a';
+        }
+        return 0;
+    }
+
+    /**
+     *
+     * @param s
+     * @return
+     */
+    public static String toCSVString(String s) {
+        if (s == null)
+            return "";
+
+        StringBuilder sb = new StringBuilder(s.length()+1);
+        sb.append('\'');
+        int len = s.length();
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            switch(c) {
+                case '\0':
+                    sb.append("%00");
+                    break;
+                case '\n':
+                    sb.append("%0A");
+                    break;
+                case '\r':
+                    sb.append("%0D");
+                    break;
+                case ',':
+                    sb.append("%2C");
+                    break;
+                case '}':
+                    sb.append("%7D");
+                    break;
+                case '%':
+                    sb.append("%25");
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     *
+     * @param s
+     * @throws java.io.IOException
+     * @return
+     */
+    public static String fromCSVString(String s) throws IOException {
+        if (s.charAt(0) != '\'') {
+            throw new IOException("Error deserializing string.");
+        }
+        int len = s.length();
+        StringBuilder sb = new StringBuilder(len-1);
+        for (int i = 1; i < len; i++) {
+            char c = s.charAt(i);
+            if (c == '%') {
+                char ch1 = s.charAt(i+1);
+                char ch2 = s.charAt(i+2);
+                i += 2;
+                if (ch1 == '0' && ch2 == '0') { sb.append('\0'); }
+                else if (ch1 == '0' && ch2 == 'A') { sb.append('\n'); }
+                else if (ch1 == '0' && ch2 == 'D') { sb.append('\r'); }
+                else if (ch1 == '2' && ch2 == 'C') { sb.append(','); }
+                else if (ch1 == '7' && ch2 == 'D') { sb.append('}'); }
+                else if (ch1 == '2' && ch2 == '5') { sb.append('%'); }
+                else {throw new IOException("Error deserializing string.");}
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     *
+     * @param barr
+     * @return
+     */
+    static String toXMLBuffer(byte barr[]) {
+        if (barr == null || barr.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(2*barr.length);
+        for (int idx = 0; idx < barr.length; idx++) {
+            sb.append(Integer.toHexString(barr[idx]));
+        }
+        return sb.toString();
+    }
+
+    /**
+     *
+     * @param s
+     * @throws java.io.IOException
+     * @return
+     */
+    static byte[] fromXMLBuffer(String s)
+            throws IOException {
+        ByteArrayOutputStream stream =  new ByteArrayOutputStream();
+        if (s.length() == 0) { return stream.toByteArray(); }
+        int blen = s.length()/2;
+        byte[] barr = new byte[blen];
+        for (int idx = 0; idx < blen; idx++) {
+            char c1 = s.charAt(2*idx);
+            char c2 = s.charAt(2*idx+1);
+            barr[idx] = Byte.parseByte(""+c1+c2, 16);
+        }
+        stream.write(barr);
+        return stream.toByteArray();
+    }
+
+    /**
+     *
+     * @param barr
+     * @return
+     */
+    public static String toCSVBuffer(byte barr[]) {
+        if (barr == null || barr.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(barr.length + 1);
+        sb.append('#');
+        for(int idx = 0; idx < barr.length; idx++) {
+            sb.append(Integer.toHexString(barr[idx]));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Converts a CSV-serialized representation of buffer to a new
+     * ByteArrayOutputStream.
+     * @param s CSV-serialized representation of buffer
+     * @throws java.io.IOException
+     * @return Deserialized ByteArrayOutputStream
+     */
+    public static byte[] fromCSVBuffer(String s)
+            throws IOException {
+        if (s.charAt(0) != '#') {
+            throw new IOException("Error deserializing buffer.");
+        }
+        ByteArrayOutputStream stream =  new ByteArrayOutputStream();
+        if (s.length() == 1) { return stream.toByteArray(); }
+        int blen = (s.length()-1)/2;
+        byte[] barr = new byte[blen];
+        for (int idx = 0; idx < blen; idx++) {
+            char c1 = s.charAt(2*idx+1);
+            char c2 = s.charAt(2*idx+2);
+            barr[idx] = Byte.parseByte(""+c1+c2, 16);
+        }
+        stream.write(barr);
+        return stream.toByteArray();
+    }
+
+    public static int compareBytes(byte b1[], int off1, int len1, byte b2[], int off2, int len2) {
+        int i;
+        for(i=0; i < len1 && i < len2; i++) {
+            if (b1[off1+i] != b2[off2+i]) {
+                return b1[off1+i] < b2[off2+i] ? -1 : 1;
+            }
+        }
+        if (len1 != len2) {
+            return len1 < len2 ? -1 : 1;
+        }
+        return 0;
+    }
+
+
+    public static final char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5', '6',
+            '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+    public static List<String> splitSmart(String s, char separator) {
+        ArrayList<String> lst = new ArrayList<>(4);
+        splitSmart(s, separator, lst);
+        return lst;
+
+    }
+
+    public static List<String> splitSmart(String s, char separator, boolean trimEmpty) {
+        List<String> l = splitSmart(s, separator);
+        if(trimEmpty){
+            if (l.size() > 0 && l.get(0).isEmpty()) l.remove(0);
+        }
+        return l;
+    }
+
+    /**
+     * Split a string based on a separator, but don't split if it's inside
+     * a string.  Assume '\' escapes the next char both inside and
+     * outside strings.
+     */
+    public static void splitSmart(String s, char separator, List<String> lst) {
+        int pos=0, start=0, end=s.length();
+        char inString=0;
+        char ch=0;
+        while (pos < end) {
+            char prevChar=ch;
+            ch = s.charAt(pos++);
+            if (ch=='\\') {    // skip escaped chars
+                pos++;
+            } else if (inString != 0 && ch==inString) {
+                inString=0;
+            } else if (ch=='\'' || ch=='"') {
+                // If char is directly preceeded by a number or letter
+                // then don't treat it as the start of a string.
+                // Examples: 50" TV, or can't
+                if (!Character.isLetterOrDigit(prevChar)) {
+                    inString=ch;
+                }
+            } else if (ch==separator && inString==0) {
+                lst.add(s.substring(start,pos-1));
+                start=pos;
+            }
+        }
+        if (start < end) {
+            lst.add(s.substring(start,end));
+        }
+
+        /***
+         if (SolrCore.log.isLoggable(Level.FINEST)) {
+         SolrCore.log.trace("splitCommand=" + lst);
+         }
+         ***/
+
+    }
+
+    /** Splits a backslash escaped string on the separator.
+     * <p>
+     * Current backslash escaping supported:
+     * <br> \n \t \r \b \f are escaped the same as a Java String
+     * <br> Other characters following a backslash are produced verbatim (\c =&gt; c)
+     *
+     * @param s  the string to split
+     * @param separator the separator to split on
+     * @param decode decode backslash escaping
+     * @return not null
+     */
+    public static List<String> splitSmart(String s, String separator, boolean decode) {
+        ArrayList<String> lst = new ArrayList<>(2);
+        StringBuilder sb = new StringBuilder();
+        int pos=0, end=s.length();
+        while (pos < end) {
+            if (s.startsWith(separator,pos)) {
+                if (sb.length() > 0) {
+                    lst.add(sb.toString());
+                    sb=new StringBuilder();
+                }
+                pos+=separator.length();
+                continue;
+            }
+
+            char ch = s.charAt(pos++);
+            if (ch=='\\') {
+                if (!decode) sb.append(ch);
+                if (pos>=end) break;  // ERROR, or let it go?
+                ch = s.charAt(pos++);
+                if (decode) {
+                    switch(ch) {
+                        case 'n' : ch='\n'; break;
+                        case 't' : ch='\t'; break;
+                        case 'r' : ch='\r'; break;
+                        case 'b' : ch='\b'; break;
+                        case 'f' : ch='\f'; break;
+                    }
+                }
+            }
+
+            sb.append(ch);
+        }
+
+        if (sb.length() > 0) {
+            lst.add(sb.toString());
+        }
+
+        return lst;
+    }
+
+    /**
+     * Splits file names separated by comma character.
+     * File names can contain comma characters escaped by backslash '\'
+     *
+     * @param fileNames the string containing file names
+     * @return a list of file names with the escaping backslashed removed
+     */
+    public static List<String> splitFileNames(String fileNames) {
+        if (fileNames == null)
+            return Collections.<String>emptyList();
+
+        List<String> result = new ArrayList<>();
+        for (String file : fileNames.split("(?<!\\\\),")) {
+            result.add(file.replaceAll("\\\\(?=,)", ""));
+        }
+
+        return result;
+    }
+
+    /**
+     * Creates a backslash escaped string, joining all the items.
+     * @see #escapeTextWithSeparator
+     */
+    public static String join(Collection<?> items, char separator) {
+        if (items == null) return "";
+        StringBuilder sb = new StringBuilder(items.size() << 3);
+        boolean first=true;
+        for (Object o : items) {
+            String item = String.valueOf(o);
+            if (first) {
+                first = false;
+            } else {
+                sb.append(separator);
+            }
+            appendEscapedTextToBuilder(sb, item, separator);
+        }
+        return sb.toString();
+    }
+
+
+
+    public static List<String> splitWS(String s, boolean decode) {
+        ArrayList<String> lst = new ArrayList<>(2);
+        StringBuilder sb = new StringBuilder();
+        int pos=0, end=s.length();
+        while (pos < end) {
+            char ch = s.charAt(pos++);
+            if (Character.isWhitespace(ch)) {
+                if (sb.length() > 0) {
+                    lst.add(sb.toString());
+                    sb=new StringBuilder();
+                }
+                continue;
+            }
+
+            if (ch=='\\') {
+                if (!decode) sb.append(ch);
+                if (pos>=end) break;  // ERROR, or let it go?
+                ch = s.charAt(pos++);
+                if (decode) {
+                    switch(ch) {
+                        case 'n' : ch='\n'; break;
+                        case 't' : ch='\t'; break;
+                        case 'r' : ch='\r'; break;
+                        case 'b' : ch='\b'; break;
+                        case 'f' : ch='\f'; break;
+                    }
+                }
+            }
+
+            sb.append(ch);
+        }
+
+        if (sb.length() > 0) {
+            lst.add(sb.toString());
+        }
+
+        return lst;
+    }
+
+    public static List<String> toLower(List<String> strings) {
+        ArrayList<String> ret = new ArrayList<>(strings.size());
+        for (String str : strings) {
+            ret.add(str.toLowerCase(Locale.ROOT));
+        }
+        return ret;
+    }
+
+
+
+    /** Return if a string starts with '1', 't', or 'T'
+     *  and return false otherwise.
+     */
+    public static boolean parseBoolean(String s) {
+        char ch = s.length()>0 ? s.charAt(0) : 0;
+        return (ch=='1' || ch=='t' || ch=='T');
+    }
+
+    /** how to transform a String into a boolean... more flexible than
+     * Boolean.parseBoolean() to enable easier integration with html forms.
+     */
+    public static boolean parseBool(String s) {
+        if( s != null ) {
+            if( s.startsWith("true") || s.startsWith("on") || s.startsWith("yes") ) {
+                return true;
+            }
+            if( s.startsWith("false") || s.startsWith("off") || s.equals("no") ) {
+                return false;
+            }
+        }
+        return true;//throw new Exception("invalid boolean value: ");
+    }
+
+    /**
+     * {@link NullPointerException} and {@link } free version of {@link #parseBool(String)}
+     * @return parsed boolean value (or def, if s is null or invalid)
+     */
+    public static boolean parseBool(String s, boolean def) {
+        if( s != null ) {
+            if( s.startsWith("true") || s.startsWith("on") || s.startsWith("yes") ) {
+                return true;
+            }
+            if( s.startsWith("false") || s.startsWith("off") || s.equals("no") ) {
+                return false;
+            }
+        }
+        return def;
+    }
+
+    /**
+     * URLEncodes a value, replacing only enough chars so that
+     * the URL may be unambiguously pasted back into a browser.
+     * <p>
+     * Characters with a numeric value less than 32 are encoded.
+     * &amp;,=,%,+,space are encoded.
+     */
+    public static void partialURLEncodeVal(Appendable dest, String val) throws IOException {
+        for (int i=0; i<val.length(); i++) {
+            char ch = val.charAt(i);
+            if (ch < 32) {
+                dest.append('%');
+                if (ch < 0x10) dest.append('0');
+                dest.append(Integer.toHexString(ch));
+            } else {
+                switch (ch) {
+                    case ' ': dest.append('+'); break;
+                    case '&': dest.append("%26"); break;
+                    case '%': dest.append("%25"); break;
+                    case '=': dest.append("%3D"); break;
+                    case '+': dest.append("%2B"); break;
+                    default : dest.append(ch); break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a new copy of the string with the separator backslash escaped.
+     * @see #join
+     */
+    public static String escapeTextWithSeparator(String item, char separator) {
+        StringBuilder sb = new StringBuilder(item.length() * 2);
+        appendEscapedTextToBuilder(sb, item, separator);
+        return sb.toString();
+    }
+
+    /**
+     * writes chars from item to out, backslash escaping as needed based on separator --
+     * but does not append the separator itself
+     */
+    public static void appendEscapedTextToBuilder(StringBuilder out,
+                                                  String item,
+                                                  char separator) {
+        for (int i = 0; i < item.length(); i++) {
+            char ch = item.charAt(i);
+            if (ch == '\\' || ch == separator) {
+                out.append('\\');
+            }
+            out.append(ch);
+        }
+    }
+
+    /**Format using MesssageFormat but with the ROOT locale
+     */
+    public static String formatString(String pattern, Object... args)  {
+        return new MessageFormat(pattern, Locale.ROOT).format(args);
+    }
+
+    /**
+     * Cast value to a an int, or throw an exception
+     * if there is an overflow.
+     *
+     * @param value a long to be casted to an int
+     * @return an int that is == to value
+     * @throws IllegalArgumentException if value can't be casted to an int
+     * @deprecated replaced by {@link java.lang.Math#toIntExact(long)}
+     */
+    public static int checkedCast(long value) {
+        int valueI = (int) value;
+        if (valueI != value) {
+            throw new IllegalArgumentException(String.format("Overflow casting %d to an int", value));
+        }
+        return valueI;
     }
 
 }
