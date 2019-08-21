@@ -1083,4 +1083,20 @@ public class ClientUtils {
         return valueI;
     }
 
+    public static String getCallLocationName(int depth) {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        if (stackTrace.length <= depth) {
+            return "<unknown>";
+        }
+
+        StackTraceElement elem = stackTrace[depth];
+
+        return String.format("%s(%s:%d)", elem.getMethodName(), elem.getFileName(), elem.getLineNumber());
+    }
+
+    public static String getCallLocationName() {
+        return getCallLocationName(4);
+    }
+
 }
