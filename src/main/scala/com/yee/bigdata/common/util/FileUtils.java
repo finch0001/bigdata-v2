@@ -17,6 +17,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import static com.yee.bigdata.common.util.Preconditions.checkNotNull;
+
 public class FileUtils {
     /** Global lock to prevent concurrent directory deletes under Windows. */
     private static final Object WINDOWS_DELETE_LOCK = new Object();
@@ -191,7 +193,7 @@ public class FileUtils {
     public static void deleteFileOrDirectory(File file) throws IOException {
         checkNotNull(file, "file");
 
-        guardIfWindows(FileUtils::deleteFileOrDirectoryInternal, file);
+        //guardIfWindows(FileUtils::deleteFileOrDirectoryInternal, file);
     }
 
     /**
@@ -209,7 +211,7 @@ public class FileUtils {
     public static void deleteDirectory(File directory) throws IOException {
         checkNotNull(directory, "directory");
 
-        guardIfWindows(FileUtils::deleteDirectoryInternal, directory);
+        //guardIfWindows(FileUtils::deleteDirectoryInternal, directory);
     }
 
     /**
@@ -324,6 +326,9 @@ public class FileUtils {
      * Private default constructor to avoid instantiation.
      */
     private FileUtils() {}
-}
+
+
+
 
 }
+
