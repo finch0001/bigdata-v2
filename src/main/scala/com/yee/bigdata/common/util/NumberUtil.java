@@ -43,5 +43,5 @@ public class NumberUtil {
     public static enum Operation {
         MULTIPLY, DIVIDE, ADD, AVG, OTHERS;
     }
-    
+
 }
