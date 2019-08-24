@@ -1,22 +1,21 @@
 package com.yee.lucene;
 
+
 import java.util.Comparator;
 
 /**
- * An {@link IntroSorter} for object arrays.
+ * An {@link InPlaceMergeSorter} for object arrays.
  * @lucene.internal
  */
-final class ArrayIntroSorter<T> extends IntroSorter {
+final class ArrayInPlaceMergeSorter<T> extends InPlaceMergeSorter {
 
     private final T[] arr;
     private final Comparator<? super T> comparator;
-    private T pivot;
 
-    /** Create a new {@link }. */
-    public ArrayIntroSorter(T[] arr, Comparator<? super T> comparator) {
+    /** Create a new {@link ArrayInPlaceMergeSorter}. */
+    public ArrayInPlaceMergeSorter(T[] arr, Comparator<? super T> comparator) {
         this.arr = arr;
         this.comparator = comparator;
-        pivot = null;
     }
 
     @Override
@@ -27,16 +26,6 @@ final class ArrayIntroSorter<T> extends IntroSorter {
     @Override
     protected void swap(int i, int j) {
         ArrayUtil.swap(arr, i, j);
-    }
-
-    @Override
-    protected void setPivot(int i) {
-        pivot = arr[i];
-    }
-
-    @Override
-    protected int comparePivot(int i) {
-        return comparator.compare(pivot, arr[i]);
     }
 
 }
