@@ -5,7 +5,7 @@ package com.yee.bigdata.common.thread
   * fatal throwable in {@link scala.concurrent.Future}'s body, and re-throw
   * SparkFatalException, which wraps the fatal throwable inside.
   * Note that SparkFatalException should only be thrown from a {@link scala.concurrent.Future},
-  * which is run by using ThreadUtils.awaitResult. ThreadUtils.awaitResult will catch
+  * which is run by using ThreadUtilsV2.awaitResult. ThreadUtilsV2.awaitResult will catch
   * it and re-throw the original exception/error.
   */
 //private[spark] final class SparkFatalException(val throwable: Throwable) extends Exception

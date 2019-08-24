@@ -111,7 +111,7 @@ object ThreadUtils {
     *
     * SomeException: exception-message
     *   at CallerClass.body-method (sourcefile.scala)
-    *   at ... run in separate thread using org.apache.spark.util.ThreadUtils ... ()
+    *   at ... run in separate thread using org.apache.spark.util.ThreadUtilsV2 ... ()
     *   at CallerClass.caller-method (sourcefile.scala)
     *   ...
     */
@@ -139,7 +139,7 @@ object ThreadUtils {
       case Some(realException) =>
         // Remove the part of the stack that shows method calls into this helper method
         // This means drop everything from the top until the stack element
-        // ThreadUtils.runInNewThread(), and then drop that as well (hence the `drop(1)`).
+        // ThreadUtilsV2.runInNewThread(), and then drop that as well (hence the `drop(1)`).
         val baseStackTrace = Thread.currentThread().getStackTrace().dropWhile(
           ! _.getClassName.contains(this.getClass.getSimpleName)).drop(1)
 
@@ -150,7 +150,7 @@ object ThreadUtils {
         // Combine the two stack traces, with a place holder just specifying that there
         // was a helper method used, without any further details of the helper
         val placeHolderStackElem = new StackTraceElement(
-          s"... run in separate thread using ${ThreadUtils.getClass.getName.stripSuffix("$")} ..",
+          s"... run in separate thread using ${ThreadUtilsV2.getClass.getName.stripSuffix("$")} ..",
           " ", "", -1)
         val finalStackTrace = extraStackTrace ++ Seq(placeHolderStackElem) ++ baseStackTrace
 

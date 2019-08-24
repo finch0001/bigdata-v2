@@ -78,7 +78,7 @@ object Main {
   }
 
   def threadUtilTest1(): Unit ={
-    val executor = ThreadUtils.newDaemonSingleThreadExecutor("this-is-a-thread-name")
+    val executor = ThreadUtilsV2.newDaemonSingleThreadExecutor("this-is-a-thread-name")
     @volatile var threadName = ""
     executor.submit(new Runnable {
       override def run(): Unit = {
@@ -92,7 +92,7 @@ object Main {
   }
 
   def threadUtilTest2(): Unit ={
-    val executor = ThreadUtils.newDaemonSingleThreadScheduledExecutor("this-is-a-thread-name")
+    val executor = ThreadUtilsV2.newDaemonSingleThreadScheduledExecutor("this-is-a-thread-name")
 
     try {
       val latch = new CountDownLatch(1)
