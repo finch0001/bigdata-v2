@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-
 import parquet.column.ColumnDescriptor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.ParquetEncodingException;
